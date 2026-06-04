@@ -14,6 +14,7 @@ const app = createApp({
         const selectedSpecies = ref("guinea_pig");
         const selectedColor = ref("");
         const selectedBreed = ref("");
+        const monitorSpecies = ref("guinea_pig");
 
         const speciesList = {
             guinea_pig: "荷兰猪",
@@ -424,6 +425,7 @@ const app = createApp({
             fileInput, isDragging, uploadPreview, detecting, detectResult,
             selectedSpecies, selectedColor, selectedBreed,
             speciesList, breedOptions,
+            monitorSpecies,
             topDetection,
             getSpeciesIcon, handleFileSelect, handleDrop, detectBreed,
 

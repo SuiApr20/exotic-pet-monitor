@@ -49,40 +49,13 @@
                 <!-- ==================== Tab1: 品种识别 ==================== -->
                 <div class="tab-pane fade show active" id="tab-breed">
                     <div class="row g-3">
-                        <!-- 左侧：选择 + 上传 -->
+                        <!-- 左侧：上传 -->
                         <div class="col-md-4">
                             <div class="card shadow-sm">
-                                <div class="card-header"><i class="bi bi-sliders"></i> 选择物种</div>
+                                <div class="card-header"><i class="bi bi-cloud-upload"></i> 上传图片</div>
                                 <div class="card-body">
-                                    <!-- 物种选择 -->
-                                    <label class="form-label">异宠物种</label>
-                                    <div class="d-flex gap-2 mb-3">
-                                        <button v-for="(name, key) in speciesList"
-                                                :key="key"
-                                                @click="selectedSpecies = key"
-                                                :class="['btn flex-fill', selectedSpecies === key ? 'btn-primary' : 'btn-outline-secondary']">
-                                            {{ getSpeciesIcon(key) }} {{ name }}
-                                        </button>
-                                    </div>
-
-                                    <!-- 品种选择（仅荷兰猪显示） -->
-                                    <div v-if="selectedSpecies === 'guinea_pig'" class="card bg-light">
-                                        <div class="card-body">
-                                            <label class="form-label">花色</label>
-                                            <select class="form-select mb-2" v-model="selectedColor">
-                                                <option value="">不限</option>
-                                                <option v-for="c in breedOptions.colors" :value="c">{{ c }}</option>
-                                            </select>
-                                            <label class="form-label">品种</label>
-                                            <select class="form-select" v-model="selectedBreed">
-                                                <option value="">不限</option>
-                                                <option v-for="b in breedOptions.breeds" :value="b">{{ b }}</option>
-                                            </select>
-                                        </div>
-                                    </div>
-
                                     <!-- 上传区域 -->
-                                    <div class="mt-3">
+                                    <div>
                                         <label class="form-label"><i class="bi bi-cloud-upload"></i> 上传图片</label>
                                         <div class="upload-zone rounded border border-2 border-dashed p-4 text-center"
                                              :class="{ 'border-primary bg-light': isDragging }"
@@ -152,6 +125,22 @@
                     <div class="row g-3">
                         <!-- 左侧控制面板 -->
                         <div class="col-md-3">
+                            <!-- 物种选择 -->
+                            <div class="card shadow-sm mb-3">
+                                <div class="card-header"><i class="bi bi-sliders"></i> 选择物种</div>
+                                <div class="card-body">
+                                    <div class="d-grid gap-1">
+                                        <button v-for="(name, key) in speciesList"
+                                                :key="key"
+                                                @click="monitorSpecies = key"
+                                                :class="['btn btn-sm', monitorSpecies === key ? 'btn-primary' : 'btn-outline-secondary']"
+                                                :disabled="key !== 'guinea_pig'">
+                                            {{ getSpeciesIcon(key) }} {{ name }}{{ key !== 'guinea_pig' ? ' (开发中)' : '' }}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div class="card shadow-sm mb-3">
                                 <div class="card-header"><i class="bi bi-geo-alt"></i> ROI 区域设置</div>
                                 <div class="card-body">
