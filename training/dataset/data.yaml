@@ -1,0 +1,8 @@
+path: C:/Users/Sui/Desktop/xxxs/exotic-pet-monitor/training/dataset
+train: images/train
+val: images/val
+nc: 3
+names:
+  0: Hamster
+  1: Parrot
+  2: Guinea_pig
