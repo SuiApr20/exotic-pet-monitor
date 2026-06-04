@@ -26,16 +26,13 @@ const app = createApp({
             breeds: ["长顺", "长逆", "加州", "泰迪"]
         };
 
-        // 品种结果计算属性
-        const hasBreedInfo = computed(() => {
-            if (!detectResult.value || !detectResult.value.detections) return false;
-            return detectResult.value.detections.some(d => d.breed_info && d.breed_info.full_name !== '未知');
-        });
-
-        const breedResult = computed(() => {
-            if (!detectResult.value || !detectResult.value.detections) return null;
-            const det = detectResult.value.detections.find(d => d.breed_info && d.breed_info.full_name !== '未知');
-            return det ? det.breed_info : null;
+        // 取置信度最高的检测结果
+        const topDetection = computed(() => {
+            if (!detectResult.value || !detectResult.value.detections || !detectResult.value.detections.length) {
+                return { class_name: '未知', confidence: 0, breed_info: null };
+            }
+            const sorted = [...detectResult.value.detections].sort((a, b) => b.confidence - a.confidence);
+            return sorted[0];
         });
 
         function getSpeciesIcon(key) {
@@ -427,7 +424,7 @@ const app = createApp({
             fileInput, isDragging, uploadPreview, detecting, detectResult,
             selectedSpecies, selectedColor, selectedBreed,
             speciesList, breedOptions,
-            hasBreedInfo, breedResult,
+            topDetection,
             getSpeciesIcon, handleFileSelect, handleDrop, detectBreed,
 
             // 健康监护

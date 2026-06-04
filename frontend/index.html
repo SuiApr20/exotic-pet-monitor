@@ -125,21 +125,17 @@
                                             <img :src="detectResult.result_image_url" class="img-fluid rounded border">
                                         </div>
                                         <div class="col-md-4">
-                                            <div class="alert alert-success">
+                                            <div class="alert alert-info">
                                                 <h5><i class="bi bi-check-circle"></i> 检测结果</h5>
-                                                <table class="table table-sm mb-0">
-                                                    <tr v-for="(det, i) in detectResult.detections" :key="i">
-                                                        <td><strong>{{ det.class_name }}</strong></td>
-                                                        <td>置信度: {{ (det.confidence * 100).toFixed(1) }}%</td>
-                                                    </tr>
-                                                </table>
+                                                <div class="fs-5 fw-bold">{{ topDetection.class_name }}</div>
+                                                <div>置信度: {{ (topDetection.confidence * 100).toFixed(1) }}%</div>
                                             </div>
-                                            <!-- 品种花色结果 -->
-                                            <div v-if="hasBreedInfo" class="mt-2">
+                                            <!-- 品种花色：仅荷兰猪显示 -->
+                                            <div v-if="topDetection.class_name === '荷兰猪' && topDetection.breed_info" class="mt-2">
                                                 <div class="card border-success">
                                                     <div class="card-body py-2 px-3 text-center">
-                                                        <div class="fs-4 mb-1">🎨 <strong>{{ breedResult.color }}</strong> <strong>{{ breedResult.breed }}</strong></div>
-                                                        <div class="small text-muted">品种识别置信度: {{ (breedResult.confidence * 100).toFixed(1) }}%</div>
+                                                        <div class="fs-4 mb-1"><strong>{{ topDetection.breed_info.color }}</strong> <strong>{{ topDetection.breed_info.breed }}</strong></div>
+                                                        <div class="small text-muted">品种置信度: {{ (topDetection.breed_info.confidence * 100).toFixed(1) }}%</div>
                                                     </div>
                                                 </div>
                                             </div>
