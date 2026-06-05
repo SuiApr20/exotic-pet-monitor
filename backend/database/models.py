@@ -23,7 +23,7 @@ class BehaviorEvent(Base):
     start_time = Column(Float, nullable=False)                     # Unix timestamp
     end_time = Column(Float, nullable=False)
     duration_sec = Column(Float, nullable=False)
-    roi_name = Column(String(64), nullable=True)                   # water_bottle / hay_rack
+    roi_name = Column(String(64), nullable=True)                   # water_bottle / food_bowl
     created_at = Column(DateTime, default=datetime.now)
 
     def to_dict(self):

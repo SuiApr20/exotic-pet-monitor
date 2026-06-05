@@ -15,7 +15,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from backend.services.yolo_detector import detector
-from backend.config import GUINEA_PIG_COLORS, GUINEA_PIG_BREEDS, SPECIES
+from backend.config import GUINEA_PIG_COLORS, GUINEA_PIG_BREEDS, SPECIES, DEFAULT_MODEL_KEY
 
 router = APIRouter(prefix="/api", tags=["detection"])
 
@@ -25,6 +25,7 @@ class Base64Image(BaseModel):
     species: str = "guinea_pig"  # 用户选择的物种
     breed: str = ""              # 期望品种（可选）
     color: str = ""              # 期望花色（可选）
+    model: str = DEFAULT_MODEL_KEY  # 使用的检测模型
 
 
 @router.get("/species")
@@ -39,8 +40,37 @@ async def get_species():
     }
 
 
+@router.get("/models")
+async def get_models():
+    """获取可切换的模型列表"""
+    models = detector.get_available_models()
+    return {
+        "models": models,
+        "current": detector.current_model_key,
+        "default": DEFAULT_MODEL_KEY,
+    }
+
+
+@router.post("/switch-model")
+async def switch_model(model_key: str = Form(...)):
+    """切换检测模型"""
+    try:
+        info = detector.switch_model(model_key)
+        return {
+            "success": True,
+            "current": model_key,
+            "model_info": {
+                "name": info["name"],
+                "description": info["description"],
+                "species": list(info["class_names"].values()),
+            }
+        }
+    except Exception as e:
+        raise HTTPException(400, f"模型切换失败: {str(e)}")
+
+
 @router.post("/upload")
-async def upload_image(file: UploadFile = File(...), species: str = Form("guinea_pig")):
+async def upload_image(file: UploadFile = File(...), species: str = Form("guinea_pig"), model: str = Form(DEFAULT_MODEL_KEY), conf_threshold: float = Form(0.25)):
     """上传图片文件进行检测"""
     # 验证文件类型
     allowed = {"image/jpeg", "image/png", "image/bmp", "image/webp"}
@@ -58,16 +88,7 @@ async def upload_image(file: UploadFile = File(...), species: str = Form("guinea
         f.write(content)
 
     try:
-        results = detector.detect_image_file(save_path)
-        # 如果选了荷兰猪但没检测到，用分类器兜底
-        if species == "guinea_pig" and not any(
-            r["class_name"] == "荷兰猪" and r.get("breed_info") for r in results
-        ):
-            fallback = detector.classify_full_image(
-                cv2.imread(str(save_path))
-            )
-            if fallback:
-                results.append(fallback)
+        results = detector.detect_image_file(save_path, model_key=model, conf_threshold=conf_threshold)
     except Exception as e:
         raise HTTPException(500, f"检测失败: {str(e)}")
 
@@ -83,7 +104,8 @@ async def upload_image(file: UploadFile = File(...), species: str = Form("guinea
         "filename": file.filename,
         "detections": results,
         "result_image": str(result_basename),
-        "species_selected": SPECIES.get(species, species)
+        "species_selected": SPECIES.get(species, species),
+        "model_used": model,
     }
 
 
@@ -102,7 +124,11 @@ async def detect_base64(req: Base64Image):
         if img is None:
             raise ValueError("无法解码图片")
 
-        results = detector.detect(img)
+        # 使用请求中指定的模型（优先用 model 字段，兼容旧版 species 推断）
+        model_key = req.model
+        if model_key not in AVAILABLE_MODELS:
+            model_key = req.species if req.species in ["guinea_pig", "parrot"] else DEFAULT_MODEL_KEY
+        results = detector.detect(img, model_key=model_key)
 
         # 绘制结果
         annotated = detector.draw_boxes(img, results)
@@ -112,7 +138,8 @@ async def detect_base64(req: Base64Image):
         return {
             "success": True,
             "detections": results,
-            "result_image_base64": result_b64
+            "result_image_base64": result_b64,
+            "model_used": model_key,
         }
     except Exception as e:
         raise HTTPException(500, f"检测失败: {str(e)}")

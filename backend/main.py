@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.config import HOST, PORT, BASE_DIR, CLASSIFIER_MODEL
+from backend.config import HOST, PORT, BASE_DIR, CLASSIFIER_MODEL, AVAILABLE_MODELS
 from backend.database.models import init_db
 from backend.routers import detection, behavior
 from backend.services.yolo_detector import detector
@@ -16,6 +16,7 @@ from backend.services.yolo_detector import detector
 # 创建上传目录
 upload_dir = Path(BASE_DIR) / "uploads"
 upload_dir.mkdir(exist_ok=True)
+(upload_dir / "videos").mkdir(exist_ok=True)
 (Path(BASE_DIR) / "models").mkdir(exist_ok=True)
 
 
@@ -26,10 +27,11 @@ async def lifespan(app: FastAPI):
     print(f"   📍 http://{HOST}:{PORT}")
     print(f"   📄 API 文档: http://{HOST}:{PORT}/docs")
 
-    # 预加载模型
-    detector.load_model()
+    # 预加载所有可用模型
+    for model_key in AVAILABLE_MODELS:
+        detector._load_yolo(model_key)
     detector.load_classifier(CLASSIFIER_MODEL)
-    print(f"   🧠 模型已就绪")
+    print(f"   🧠 全部模型已就绪 ({len(AVAILABLE_MODELS)} 个检测模型 + 1 个分类器)")
     yield
 
 

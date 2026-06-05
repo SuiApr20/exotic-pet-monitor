@@ -53,7 +53,7 @@ class HealthAnalyzer:
                 alerts.append({
                     "severity": "high",
                     "message": "进食时间严重不足，可能存在消化问题或牙齿异常",
-                    "suggestion": "检查草架是否有充足干草，观察牙齿是否过长"
+                    "suggestion": "检查食盆是否有充足粮食，观察牙齿是否过长"
                 })
             elif eating_per_hour < 3:
                 score -= 15
@@ -74,21 +74,43 @@ class HealthAnalyzer:
 
         # 综合评定
         if score >= 80:
-            status = "健康 👍"
-            color = "green"
+            status = "健康"
+            color = "success"
+            summary = "进食和饮水行为正常，宠物状态良好"
         elif score >= 60:
-            status = "需关注 ⚠️"
-            color = "orange"
+            status = "需关注"
+            color = "warning"
+            summary = "行为指标偏低，建议加强观察"
         else:
-            status = "警告 🔴"
-            color = "red"
+            status = "警告"
+            color = "danger"
+            summary = "存在健康风险，建议尽快检查"
+
+        # 无异常时也给出建议
+        suggestions = []
+        if total_eating < 60 * observation_hours:
+            suggestions.append("建议增加粮食供应量")
+        if drinking_events < 2 * observation_hours:
+            suggestions.append("注意检查水壶是否正常出水")
+        if not alerts:
+            suggestions.append("暂未发现异常，继续正常喂养即可")
 
         return {
             "score": score,
             "status": status,
             "color": color,
+            "summary": summary,
+            "suggestions": suggestions,
             "alerts": alerts,
             "details": details,
+            "thresholds": {
+                "eating_low": self.thresholds["eating"]["alert_low_total_min"],
+                "eating_no_visit_hours": self.thresholds["eating"]["alert_no_visit_hours"],
+                "drinking_low": self.thresholds["drinking"]["alert_low_total_count"],
+                "drinking_no_visit_hours": self.thresholds["drinking"]["alert_no_visit_hours"],
+                "score_green": 80,
+                "score_yellow": 60,
+            },
             "observation_hours": observation_hours,
             "assessed_at": datetime.now().isoformat()
         }

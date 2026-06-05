@@ -5,9 +5,16 @@ YOLOv11 训练脚本
 用法:
     cd exotic-pet-monitor
     ../venv/Scripts/activate
+
+    # 通用三物种训练
     python training/train.py
 
-    或指定参数:
+    # 荷兰猪专精模型训练
+    python training/prepare_guinea_pig.py                              # 先筛选数据
+    python training/train.py --data dataset_guinea_pig/guinea_pig.yaml \
+                              --name guinea_pig_train --output models/guinea_pig.pt
+
+    # 指定参数
     python training/train.py --model yolo11s.pt --epochs 100 --batch 16
 """
 import argparse
@@ -32,6 +39,8 @@ def main():
     parser.add_argument("--device", default="0", help="设备: 0=GPU, cpu=CPU")
     parser.add_argument("--resume", action="store_true", help="从上次中断恢复训练")
     parser.add_argument("--freeze", type=int, default=10, help="冻结骨干网络层数 (迁移学习)")
+    parser.add_argument("--name", default="exotic_pet_detection", help="训练任务名称")
+    parser.add_argument("--output", default="models/best.pt", help="训练完成后模型存放路径（相对于项目根目录）")
     args = parser.parse_args()
 
     data_yaml = Path(__file__).parent / args.data
@@ -79,7 +88,7 @@ def main():
         save=True,
         save_period=10,
         project="runs/train",
-        name="exotic_pet_detection",
+        name=args.name,
         exist_ok=True,
         # 日志
         verbose=True,
@@ -90,7 +99,7 @@ def main():
 
     print("=" * 60)
     print("✅ 训练完成!")
-    print(f"   最佳模型保存在: runs/train/exotic_pet_detection/weights/best.pt")
+    print(f"   最佳模型保存在: runs/train/{args.name}/weights/best.pt")
 
     # 评估
     print("\n📊 模型评估:")
@@ -98,13 +107,14 @@ def main():
     print(f"   mAP50: {metrics.box.map50:.4f}")
     print(f"   mAP50-95: {metrics.box.map:.4f}")
 
-    # 导出最佳模型到 models/ 目录
-    best_pt = Path("runs/train/exotic_pet_detection/weights/best.pt")
+    # 导出最佳模型
+    best_pt = Path(f"runs/train/{args.name}/weights/best.pt")
     if best_pt.exists():
         import shutil
-        target = Path("../models/best.pt")
+        target = Path(__file__).resolve().parent.parent / args.output
+        target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy(best_pt, target)
-        print(f"   模型已复制到: models/best.pt")
+        print(f"   模型已复制到: {target}")
 
     print("=" * 60)
 

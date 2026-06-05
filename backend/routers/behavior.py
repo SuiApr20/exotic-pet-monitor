@@ -11,12 +11,13 @@ import cv2
 import numpy as np
 import asyncio
 from pathlib import Path
-from fastapi import APIRouter, UploadFile, File, WebSocket, WebSocketDisconnect, HTTPException
+from fastapi import APIRouter, UploadFile, File, Form, WebSocket, WebSocketDisconnect, HTTPException
 from pydantic import BaseModel
 
 from backend.services.yolo_detector import detector
 from backend.services.roi_engine import roi_engine
 from backend.services.health_analyzer import health_analyzer
+from backend.config import DEFAULT_MODEL_KEY, AVAILABLE_MODELS
 
 router = APIRouter(prefix="/api", tags=["behavior"])
 
@@ -66,18 +67,21 @@ async def reset_stats():
 
 
 @router.post("/video/analyze")
-async def analyze_video(file: UploadFile = File(...), sample_rate: int = 2):
+async def analyze_video(file: UploadFile = File(...), sample_rate: int = 2, model: str = Form(DEFAULT_MODEL_KEY)):
     """
     上传视频文件进行分析
 
     参数:
         file: 视频文件
         sample_rate: 每秒采样帧数（默认2帧/秒，减少计算量）
+        model: 检测模型 (best/guinea_pig/parrot)
     """
-    # 保存视频
+    # 保存视频（保留以便前端播放）
+    import uuid
     video_dir = Path("uploads/videos")
     video_dir.mkdir(parents=True, exist_ok=True)
-    video_path = video_dir / f"temp_{file.filename}"
+    video_id = uuid.uuid4().hex[:8]
+    video_path = video_dir / f"{video_id}_{file.filename}"
     content = await file.read()
     with open(video_path, "wb") as f:
         f.write(content)
@@ -87,6 +91,8 @@ async def analyze_video(file: UploadFile = File(...), sample_rate: int = 2):
     fps = cap.get(cv2.CAP_PROP_FPS)
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     duration_sec = total_frames / fps if fps > 0 else 0
+    frame_w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    frame_h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
     if duration_sec == 0:
         raise HTTPException(400, "无法读取视频时长")
@@ -98,7 +104,8 @@ async def analyze_video(file: UploadFile = File(...), sample_rate: int = 2):
     frame_count = 0
     processed = 0
 
-    timeline = []  # 时间线数据，用于前端图表
+    timeline = []           # 行为时间线（进食/饮水事件）
+    frame_detections = []   # 逐帧检测数据（供前端 Canvas 渲染框）
 
     while True:
         ret, frame = cap.read()
@@ -107,9 +114,15 @@ async def analyze_video(file: UploadFile = File(...), sample_rate: int = 2):
 
         if frame_count % frame_interval == 0:
             timestamp = frame_count / fps
-            detections = detector.detect(frame, conf_threshold=0.3)
+            detections = detector.detect(frame, conf_threshold=0.3, model_key=model)
             result = roi_engine.update(detections, frame_timestamp=timestamp)
             processed += 1
+
+            # 收集检测数据：时间戳 + bbox 列表
+            frame_detections.append({
+                "time_sec": round(timestamp, 1),
+                "detections": detections,
+            })
 
             if result["events_triggered"]:
                 for evt in result["events_triggered"]:
@@ -123,23 +136,23 @@ async def analyze_video(file: UploadFile = File(...), sample_rate: int = 2):
 
     cap.release()
 
-    # 清理
-    try:
-        video_path.unlink()
-    except Exception:
-        pass
+    # 保留视频文件供前端播放，不删除
 
     summary = roi_engine.get_summary()
     health = health_analyzer.assess(summary["stats"], duration_sec / 3600)
 
     return {
         "success": True,
+        "video_url": f"/uploads/videos/{video_path.name}",
         "video_duration_sec": round(duration_sec, 1),
+        "video_width": frame_w,
+        "video_height": frame_h,
         "frames_processed": processed,
         "fps": round(fps, 1),
         "stats": summary["stats"],
         "health": health,
-        "timeline": timeline
+        "timeline": timeline,
+        "frame_detections": frame_detections,
     }
 
 
@@ -162,6 +175,7 @@ async def websocket_monitor(websocket: WebSocket):
             data = await websocket.receive_json()
             frame_b64 = data.get("frame", "")
             roi_zones = data.get("roi_zones", None)
+            model_key = data.get("model", DEFAULT_MODEL_KEY)
 
             if roi_zones:
                 roi_engine.set_roi_zones(roi_zones)
@@ -179,7 +193,7 @@ async def websocket_monitor(websocket: WebSocket):
 
             # 检测
             now = time.time()
-            detections = detector.detect(frame, conf_threshold=0.3)
+            detections = detector.detect(frame, conf_threshold=0.3, model_key=model_key)
             behavior = roi_engine.update(detections, frame_timestamp=now)
 
             # 绘制检测框和 ROI

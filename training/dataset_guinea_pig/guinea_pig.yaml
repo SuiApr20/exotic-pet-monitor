@@ -1,0 +1,6 @@
+path: C:/Users/Sui/Desktop/xxxs/exotic-pet-monitor/training/dataset_guinea_pig
+train: images/train
+val: images/val
+nc: 1
+names:
+  0: Guinea_pig

@@ -4,13 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>异宠智能监护系统</title>
-    <!-- Bootstrap 5 -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
-    <!-- ECharts -->
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
-    <!-- Vue 3 -->
     <script src="https://cdn.jsdelivr.net/npm/vue@3.4.21/dist/vue.global.prod.js"></script>
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
@@ -20,95 +16,155 @@
         <nav class="navbar navbar-expand-lg navbar-dark bg-primary px-3">
             <div class="container-fluid">
                 <a class="navbar-brand" href="#">
-                    <i class="bi bi-heart-pulse-fill"></i> 异宠智能监护系统
+                    <i class="bi bi-heart-pulse-fill me-2"></i>异宠智能监护系统
                 </a>
                 <div class="navbar-nav ms-auto">
                     <span class="navbar-text text-white-50 small">
-                        RTX 3060 | YOLOv11 | FastAPI
+                        <i class="bi bi-cpu me-1"></i>RTX 3060 | YOLOv11 | FastAPI
                     </span>
                 </div>
             </div>
         </nav>
 
-        <!-- 主内容区：两个Tab -->
         <div class="container-fluid mt-3">
             <ul class="nav nav-tabs mb-3" id="mainTab" role="tablist">
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-breed" type="button">
-                        <i class="bi bi-search"></i> 品种识别
+                    <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-breed">
+                        <i class="bi bi-search me-1"></i>品种识别
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-monitor" type="button">
-                        <i class="bi bi-camera-video"></i> 健康监护
+                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-monitor">
+                        <i class="bi bi-camera-video me-1"></i>健康监护
                     </button>
                 </li>
             </ul>
 
             <div class="tab-content">
-                <!-- ==================== Tab1: 品种识别 ==================== -->
+                <!-- ========== Tab1: 品种识别 ========== -->
                 <div class="tab-pane fade show active" id="tab-breed">
                     <div class="row g-3">
-                        <!-- 左侧：上传 -->
-                        <div class="col-md-4">
+                        <!-- 左侧面板 -->
+                        <div class="col-lg-3">
                             <div class="card shadow-sm">
-                                <div class="card-header"><i class="bi bi-cloud-upload"></i> 上传图片</div>
+                                <div class="card-header">
+                                    <i class="bi bi-cloud-upload me-1"></i>上传与设置
+                                </div>
                                 <div class="card-body">
-                                    <!-- 上传区域 -->
-                                    <div>
-                                        <label class="form-label"><i class="bi bi-cloud-upload"></i> 上传图片</label>
-                                        <div class="upload-zone rounded border border-2 border-dashed p-4 text-center"
+                                    <!-- 模型选择 -->
+                                    <div class="mb-3">
+                                        <label class="form-label small fw-bold">检测模型</label>
+                                        <select v-model="selectedModel" class="form-select form-select-sm"
+                                                @change="onModelChange">
+                                            <option v-for="m in breedModels" :key="m.key" :value="m.key"
+                                                    :disabled="!m.is_available">
+                                                {{ m.name }}{{ m.is_available ? '' : ' (未训练)' }}
+                                            </option>
+                                        </select>
+                                        <div class="form-text small" v-if="currentModelInfo">
+                                            {{ currentModelInfo.description }}
+                                        </div>
+                                    </div>
+                                    <!-- 置信度 -->
+                                    <div class="mb-3">
+                                        <label class="form-label small fw-bold d-flex justify-content-between">
+                                            <span>置信度阈值</span>
+                                            <span class="badge bg-secondary">{{ (confThreshold * 100).toFixed(0) }}%</span>
+                                        </label>
+                                        <input type="range" class="form-range" v-model.number="confThreshold"
+                                               min="0.1" max="0.9" step="0.05">
+                                        <div class="d-flex justify-content-between small text-muted">
+                                            <span>宽松</span><span>严格</span>
+                                        </div>
+                                    </div>
+                                    <!-- 上传区 -->
+                                    <div class="mb-2">
+                                        <div class="upload-zone rounded border border-2 border-dashed p-3 text-center"
                                              :class="{ 'border-primary bg-light': isDragging }"
                                              @dragover.prevent="isDragging = true"
                                              @dragleave="isDragging = false"
                                              @drop.prevent="handleDrop">
-                                            <input type="file" ref="fileInput" accept="image/*" @change="handleFileSelect" hidden>
-                                            <div v-if="!uploadPreview">
-                                                <i class="bi bi-image display-4 text-muted"></i>
-                                                <p class="text-muted mt-2">拖拽图片到此处 或 点击上传</p>
-                                                <button class="btn btn-outline-primary btn-sm" @click="$refs.fileInput.click()">
-                                                    选择文件
+                                            <input type="file" ref="fileInput" accept="image/*"
+                                                   @change="handleFileSelect" hidden>
+                                            <template v-if="!uploadPreview">
+                                                <i class="bi bi-image display-3 text-muted"></i>
+                                                <p class="text-muted mt-2 mb-2 small">拖拽图片或点击上传</p>
+                                                <button class="btn btn-outline-primary btn-sm"
+                                                        @click="$refs.fileInput.click()">
+                                                    <i class="bi bi-folder2-open me-1"></i>选择文件
                                                 </button>
-                                            </div>
-                                            <img v-else :src="uploadPreview" class="img-fluid rounded" style="max-height:250px">
+                                            </template>
+                                            <img v-else :src="uploadPreview"
+                                                 class="img-fluid rounded" style="max-height:200px">
                                         </div>
-                                        <button v-if="uploadPreview" @click="detectBreed" :disabled="detecting"
-                                                class="btn btn-success w-100 mt-2">
-                                            <span v-if="detecting" class="spinner-border spinner-border-sm me-1"></span>
-                                            {{ detecting ? '识别中...' : '🔍 开始识别' }}
-                                        </button>
                                     </div>
+                                    <button v-if="uploadPreview" @click="detectBreed" :disabled="detecting"
+                                            class="btn btn-primary w-100">
+                                        <span v-if="detecting"
+                                              class="spinner-border spinner-border-sm me-1"></span>
+                                        {{ detecting ? '识别中...' : '开始识别' }}
+                                    </button>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- 右侧：结果展示 -->
-                        <div class="col-md-8">
+                        <!-- 右侧结果 -->
+                        <div class="col-lg-9">
                             <div class="card shadow-sm">
-                                <div class="card-header"><i class="bi bi-image"></i> 识别结果</div>
-                                <div class="card-body text-center" v-if="!detectResult">
-                                    <div class="py-5 text-muted">
-                                        <i class="bi bi-inbox display-1"></i>
-                                        <p class="mt-3">上传一张异宠照片开始识别</p>
-                                    </div>
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <span><i class="bi bi-card-image me-1"></i>识别结果</span>
+                                    <span v-if="detectResult"
+                                          :class="['badge', modelBadgeClass(detectResult.model_used)]">
+                                        {{ modelLabel(detectResult.model_used) }}
+                                    </span>
                                 </div>
+                                <!-- 空状态 -->
+                                <div class="card-body text-center py-5" v-if="!detectResult">
+                                    <i class="bi bi-inbox display-3 text-muted"></i>
+                                    <p class="text-muted mt-2">上传图片开始识别</p>
+                                </div>
+                                <!-- 有结果 -->
                                 <div class="card-body" v-else>
                                     <div class="row">
                                         <div class="col-md-8">
-                                            <img :src="detectResult.result_image_url" class="img-fluid rounded border">
+                                            <img :src="detectResult.result_image_url"
+                                                 class="img-fluid rounded border w-100">
+                                            <button @click="downloadResult"
+                                                    class="btn btn-outline-secondary btn-sm w-100 mt-2">
+                                                <i class="bi bi-download me-1"></i>保存结果图
+                                            </button>
                                         </div>
                                         <div class="col-md-4">
-                                            <div class="alert alert-info">
-                                                <h5><i class="bi bi-check-circle"></i> 检测结果</h5>
-                                                <div class="fs-5 fw-bold">{{ topDetection.class_name }}</div>
-                                                <div>置信度: {{ (topDetection.confidence * 100).toFixed(1) }}%</div>
+                                            <!-- 主结果卡片 -->
+                                            <div :class="['card border-2 mb-3', 'border-' + modelBorderColor(detectResult.model_used)]">
+                                                <div class="card-body text-center py-3">
+                                                    <div class="text-muted small mb-1">
+                                                        {{ modelDetectionLabel(detectResult.model_used) }}
+                                                    </div>
+                                                    <div class="fs-3 fw-bold mb-1">{{ detectionDisplayName }}</div>
+                                                    <div class="mb-2">
+                                                        <span class="badge bg-light text-dark border">
+                                                            检测 {{ (topDetection.confidence * 100).toFixed(1) }}%
+                                                        </span>
+                                                        <span v-if="topDetection.breed_info &&
+                                                                     topDetection.breed_info.full_name !== '未知' &&
+                                                                     topDetection.breed_info.confidence"
+                                                              class="badge bg-success ms-1">
+                                                            品种 {{ (topDetection.breed_info.confidence * 100).toFixed(1) }}%
+                                                        </span>
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <!-- 品种花色：仅荷兰猪显示 -->
-                                            <div v-if="topDetection.class_name === '荷兰猪' && topDetection.breed_info" class="mt-2">
-                                                <div class="card border-success">
-                                                    <div class="card-body py-2 px-3 text-center">
-                                                        <div class="fs-4 mb-1"><strong>{{ topDetection.breed_info.color }}</strong> <strong>{{ topDetection.breed_info.breed }}</strong></div>
-                                                        <div class="small text-muted">品种置信度: {{ (topDetection.breed_info.confidence * 100).toFixed(1) }}%</div>
+                                            <!-- 品种详情 -->
+                                            <div v-if="showBreedCard" class="card border-success">
+                                                <div class="card-header bg-success bg-opacity-10
+                                                            text-success fw-bold small py-1 px-3">
+                                                    品种花色详情
+                                                </div>
+                                                <div class="card-body text-center py-2">
+                                                    <div class="fs-4">
+                                                        <strong>{{ topDetection.breed_info.color }}</strong>
+                                                        <strong class="ms-1">{{ topDetection.breed_info.breed }}</strong>
                                                     </div>
                                                 </div>
                                             </div>
@@ -120,54 +176,58 @@
                     </div>
                 </div>
 
-                <!-- ==================== Tab2: 健康监护 ==================== -->
+                <!-- ========== Tab2: 健康监护 ========== -->
                 <div class="tab-pane fade" id="tab-monitor">
                     <div class="row g-3">
-                        <!-- 左侧控制面板 -->
-                        <div class="col-md-3">
-                            <!-- 物种选择 -->
+                        <!-- 左侧面板 -->
+                        <div class="col-lg-2">
+                            <!-- 模型状态 -->
                             <div class="card shadow-sm mb-3">
-                                <div class="card-header"><i class="bi bi-sliders"></i> 选择物种</div>
-                                <div class="card-body">
-                                    <div class="d-grid gap-1">
-                                        <button v-for="(name, key) in speciesList"
-                                                :key="key"
-                                                @click="monitorSpecies = key"
-                                                :class="['btn btn-sm', monitorSpecies === key ? 'btn-primary' : 'btn-outline-secondary']"
-                                                :disabled="key !== 'guinea_pig'">
-                                            {{ getSpeciesIcon(key) }} {{ name }}{{ key !== 'guinea_pig' ? ' (开发中)' : '' }}
-                                        </button>
+                                <div class="card-header small fw-bold">
+                                    <i class="bi bi-cpu me-1"></i>检测状态
+                                </div>
+                                <div class="card-body py-2">
+                                    <div :class="['alert py-2 px-2 mb-0 small',
+                                                 behaviorAvailable ? 'alert-info' : 'alert-warning']">
+                                        <i :class="['bi me-1', behaviorAvailable ?
+                                                   'bi-check-circle' : 'bi-exclamation-triangle']"></i>
+                                        {{ behaviorAvailable ? '模型就绪' : 'behavior.pt 未训练' }}
                                     </div>
                                 </div>
                             </div>
 
+                            <!-- ROI 设置 -->
                             <div class="card shadow-sm mb-3">
-                                <div class="card-header"><i class="bi bi-geo-alt"></i> ROI 区域设置</div>
-                                <div class="card-body">
-                                    <div class="alert alert-info small mb-2">
-                                        <i class="bi bi-info-circle"></i> 在右侧画面中用鼠标拖拽绘制水瓶和草架区域
+                                <div class="card-header small fw-bold">
+                                    <i class="bi bi-bounding-box me-1"></i>ROI 区域
+                                </div>
+                                <div class="card-body py-2">
+                                    <div class="small text-muted mb-2">
+                                        拖拽鼠标框选水壶和食盆区域
                                     </div>
-                                    <div class="d-grid gap-2">
+                                    <div class="d-grid gap-1">
                                         <button @click="roiMode = 'water_bottle'"
-                                                :class="['btn btn-sm', roiMode === 'water_bottle' ? 'btn-primary' : 'btn-outline-primary']">
-                                            💧 框选水瓶区域
+                                                :class="['btn btn-sm', roiMode === 'water_bottle' ?
+                                                         'btn-primary' : 'btn-outline-primary']">
+                                            <i class="bi bi-droplet me-1"></i>框选水壶
                                         </button>
-                                        <button @click="roiMode = 'hay_rack'"
-                                                :class="['btn btn-sm', roiMode === 'hay_rack' ? 'btn-success' : 'btn-outline-success']">
-                                            🥬 框选草架区域
+                                        <button @click="roiMode = 'food_bowl'"
+                                                :class="['btn btn-sm', roiMode === 'food_bowl' ?
+                                                         'btn-success' : 'btn-outline-success']">
+                                            <i class="bi bi-basket me-1"></i>框选食盆
                                         </button>
-                                        <button @click="clearROI" class="btn btn-sm btn-outline-danger">
-                                            <i class="bi bi-trash"></i> 清除所有ROI
+                                        <button @click="clearROI"
+                                                class="btn btn-sm btn-outline-danger">
+                                            <i class="bi bi-trash me-1"></i>清除
                                         </button>
                                     </div>
-                                    <hr>
-                                    <div class="small" v-if="roiZones.length">
-                                        <p class="mb-1"><strong>已设区域：</strong></p>
+                                    <div class="small mt-2" v-if="roiZones.length">
                                         <div v-for="z in roiZones" :key="z.name" class="mb-1">
-                                            <span :class="['badge', z.name === 'water_bottle' ? 'bg-primary' : 'bg-success']">
-                                                {{ z.name === 'water_bottle' ? '💧 水瓶' : '🥬 草架' }}
+                                            <span :class="['badge', z.name === 'water_bottle' ?
+                                                         'bg-primary' : 'bg-success']">
+                                                {{ z.name === 'water_bottle' ? '水壶' : '食盆' }}
                                             </span>
-                                            <span class="text-muted">({{ z.width }}×{{ z.height }})</span>
+                                            <span class="text-muted ms-1 small">{{ z.width }}x{{ z.height }}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -175,97 +235,230 @@
 
                             <!-- 监控模式 -->
                             <div class="card shadow-sm mb-3">
-                                <div class="card-header"><i class="bi bi-camera"></i> 监控模式</div>
-                                <div class="card-body">
-                                    <div class="d-grid gap-2">
-                                        <button @click="startWebcam" :disabled="monitorActive"
+                                <div class="card-header small fw-bold">
+                                    <i class="bi bi-camera me-1"></i>监控模式
+                                </div>
+                                <div class="card-body py-2">
+                                    <div class="d-grid gap-1">
+                                        <button v-if="!monitorActive" @click="startWebcam"
                                                 class="btn btn-primary btn-sm">
-                                            <i class="bi bi-webcam"></i> 实时摄像头
+                                            <i class="bi bi-webcam me-1"></i>启动摄像头
                                         </button>
-                                        <button @click="$refs.videoInput.click()" class="btn btn-outline-secondary btn-sm">
-                                            <i class="bi bi-upload"></i> 上传视频
+                                        <button v-if="monitorActive" @click="stopWebcam"
+                                                class="btn btn-danger btn-sm">
+                                            <i class="bi bi-stop-circle me-1"></i>停止摄像头
                                         </button>
-                                        <input type="file" ref="videoInput" accept="video/*" @change="uploadVideo" hidden>
+                                        <button @click="$refs.videoInput.click()"
+                                                class="btn btn-outline-secondary btn-sm">
+                                            <i class="bi bi-upload me-1"></i>上传视频
+                                        </button>
+                                        <input type="file" ref="videoInput" accept="video/*"
+                                               @change="uploadVideo" hidden>
                                     </div>
                                     <div v-if="videoUploading" class="text-center mt-2">
                                         <div class="spinner-border spinner-border-sm text-primary"></div>
-                                        <span class="small">视频分析中...</span>
+                                        <span class="small ms-1">分析中...</span>
                                     </div>
                                 </div>
                             </div>
 
                             <!-- 实时统计 -->
                             <div class="card shadow-sm">
-                                <div class="card-header"><i class="bi bi-graph-up"></i> 实时统计</div>
-                                <div class="card-body small">
-                                    <table class="table table-sm table-borderless mb-0">
-                                        <tr><td>🍽 进食次数</td><td class="text-end fw-bold">{{ behaviorStats.eating_events }}</td></tr>
-                                        <tr><td>⏱ 进食总时长</td><td class="text-end">{{ (behaviorStats.total_eating_sec / 60).toFixed(1) }} 分钟</td></tr>
-                                        <tr><td>💧 饮水次数</td><td class="text-end fw-bold">{{ behaviorStats.drinking_events }}</td></tr>
-                                        <tr><td>⏱ 饮水总时长</td><td class="text-end">{{ (behaviorStats.total_drinking_sec / 60).toFixed(1) }} 分钟</td></tr>
-                                    </table>
+                                <div class="card-header small fw-bold">
+                                    <i class="bi bi-graph-up me-1"></i>行为统计
                                 </div>
-                            </div>
-                        </div>
-
-                        <!-- 中间视频画面 -->
-                        <div class="col-md-6">
-                            <div class="card shadow-sm">
-                                <div class="card-header d-flex justify-content-between align-items-center">
-                                    <span><i class="bi bi-camera-video-fill"></i> 监控画面</span>
-                                    <span v-if="monitorActive" class="badge bg-danger pulse">● LIVE</span>
-                                </div>
-                                <div class="card-body p-0 position-relative" style="min-height:400px; background:#1a1a2e;">
-                                    <!-- 视频/摄像头画面 -->
-                                    <video ref="videoPlayer" autoplay muted playsinline
-                                           class="w-100" style="display:none;"></video>
-                                    <!-- 结果画布 -->
-                                    <canvas ref="monitorCanvas"
-                                            class="w-100"
-                                            style="cursor:crosshair;"
-                                            @mousedown="canvasMouseDown"
-                                            @mousemove="canvasMouseMove"
-                                            @mouseup="canvasMouseUp">
-                                    </canvas>
-                                    <div v-if="!monitorActive && !videoResult"
-                                         class="position-absolute top-50 start-50 translate-middle text-center text-white-50">
-                                        <i class="bi bi-camera-video-off display-1"></i>
-                                        <p>启动摄像头或上传视频开始监护</p>
+                                <div class="card-body py-2 small">
+                                    <div class="row g-1">
+                                        <div class="col-6">
+                                            <div class="border rounded p-1 text-center">
+                                                <div class="fw-bold fs-5">{{ behaviorStats.eating_events }}</div>
+                                                <div class="text-muted" style="font-size:10px">进食次数</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="border rounded p-1 text-center">
+                                                <div class="fw-bold fs-5">{{ (behaviorStats.total_eating_sec / 60).toFixed(1) }}</div>
+                                                <div class="text-muted" style="font-size:10px">进食(分钟)</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="border rounded p-1 text-center">
+                                                <div class="fw-bold fs-5">{{ behaviorStats.drinking_events }}</div>
+                                                <div class="text-muted" style="font-size:10px">饮水次数</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="border rounded p-1 text-center">
+                                                <div class="fw-bold fs-5">{{ (behaviorStats.total_drinking_sec / 60).toFixed(1) }}</div>
+                                                <div class="text-muted" style="font-size:10px">饮水(分钟)</div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- 右侧健康评估 -->
-                        <div class="col-md-3">
+                        <!-- 中间视频 -->
+                        <div class="col-lg-7">
+                            <div class="card shadow-sm">
+                                <div class="card-header d-flex justify-content-between align-items-center small fw-bold">
+                                    <span><i class="bi bi-camera-video-fill me-1"></i>监控画面</span>
+                                    <span v-if="monitorActive"
+                                          class="badge bg-danger">LIVE</span>
+                                    <span v-else-if="videoResult"
+                                          class="badge bg-success">已分析</span>
+                                </div>
+                                <div class="card-body p-0 position-relative">
+                                    <!-- 视频回放：左=原视频，右=标注视频 -->
+                                    <div v-if="videoResult && videoResult.video_url" class="row g-0">
+                                        <div class="col-6 position-relative">
+                                            <span class="badge bg-dark position-absolute top-0 start-0 m-1 small opacity-75" style="z-index:10;">原始画面</span>
+                                            <video ref="reviewVideo"
+                                                   :src="videoResult.video_url"
+                                                   class="w-100 d-block"
+                                                   style="aspect-ratio: auto;"
+                                                   @click="toggleVideoPlay"
+                                                   @timeupdate="onVideoTimeUpdate"
+                                                   @loadedmetadata="onVideoLoaded"></video>
+                                        </div>
+                                        <div class="col-6 position-relative" style="background:#1a1a2e;">
+                                            <span class="badge bg-success position-absolute top-0 start-0 m-1 small opacity-75" style="z-index:10;">检测结果</span>
+                                            <canvas ref="annotatedCanvas"
+                                                    class="w-100 d-block"
+                                                    style="aspect-ratio: auto; cursor: crosshair;"
+                                                    @mousedown="canvasMouseDown"
+                                                    @mousemove="canvasMouseMove"
+                                                    @mouseup="canvasMouseUp"></canvas>
+                                        </div>
+                                    </div>
+                                    <!-- 自定义控制栏 -->
+                                    <div v-if="videoResult && videoResult.video_url" class="bg-dark px-2 py-1">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <button @click="toggleVideoPlay"
+                                                    class="btn btn-sm btn-link text-white p-0 border-0">
+                                                <i :class="['bi', videoPlaying ? 'bi-pause-fill' : 'bi-play-fill']"></i>
+                                            </button>
+                                            <div class="progress flex-grow-1 position-relative"
+                                                 style="height:10px; cursor:pointer;"
+                                                 @click="seekVideo">
+                                                <div class="progress-bar bg-primary"
+                                                     :style="{width: videoProgress + '%'}"></div>
+                                                <div v-for="(evt, i) in videoTimeline" :key="i"
+                                                     :class="['position-absolute top-0 rounded-circle',
+                                                              evt.type === 'eating' ? 'bg-success' : 'bg-info']"
+                                                     :title="(evt.type === 'eating' ? '进食' : '饮水') +
+                                                             ' ' + evt.time_sec + 's'"
+                                                     style="width:5px; height:10px; transform:translateX(-2px); z-index:5;"
+                                                     :style="{left: (evt.time_sec / videoResult.video_duration_sec * 100) + '%'}">
+                                                </div>
+                                            </div>
+                                            <span class="text-white-50 small" style="min-width:90px;">
+                                                {{ formatTime(videoCurrentTime) }} / {{ formatTime(videoResult.video_duration_sec) }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <!-- 实时摄像头 -->
+                                    <div v-if="!videoResult || !videoResult.video_url">
+                                        <!-- 空状态 -->
+                                        <div v-if="!monitorActive"
+                                             class="bg-dark d-flex align-items-center justify-content-center"
+                                             style="min-height:450px;">
+                                            <div class="text-center text-white-50">
+                                                <i class="bi bi-camera-video-off display-2"></i>
+                                                <p class="small mt-1">启动摄像头或上传视频</p>
+                                            </div>
+                                        </div>
+                                        <!-- 摄像头运行时：上=原始画面，下=检测结果 -->
+                                        <div v-if="monitorActive" class="d-flex flex-column" style="gap:2px;">
+                                            <div class="position-relative" style="background:#000;">
+                                                <video ref="videoPlayer" autoplay muted playsinline
+                                                       class="w-100 d-block"></video>
+                                                <span class="badge bg-dark position-absolute top-0 start-0 m-1 small opacity-75">原始画面</span>
+                                            </div>
+                                            <div class="position-relative" style="background:#1a1a2e;">
+                                                <canvas ref="monitorCanvas" class="w-100 d-block"
+                                                        style="cursor:crosshair;"
+                                                        @mousedown="canvasMouseDown"
+                                                        @mousemove="canvasMouseMove"
+                                                        @mouseup="canvasMouseUp"></canvas>
+                                                <span class="badge bg-success position-absolute top-0 start-0 m-1 small opacity-75">检测结果</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 右侧：健康评估 -->
+                        <div class="col-lg-3">
+                            <!-- 健康评估结果 -->
                             <div class="card shadow-sm mb-3">
-                                <div class="card-header"><i class="bi bi-heart-pulse"></i> 健康评估</div>
-                                <div class="card-body text-center" v-if="!healthResult">
-                                    <p class="text-muted small">开始监控后将自动评估</p>
+                                <div class="card-header small fw-bold d-flex justify-content-between align-items-center">
+                                    <span><i class="bi bi-heart-pulse me-1"></i>健康评估</span>
+                                    <span v-if="healthResult && healthResult.alerts && healthResult.alerts.length"
+                                          class="badge bg-danger pulse">!</span>
                                 </div>
-                                <div class="card-body" v-else>
-                                    <div class="text-center mb-3">
-                                        <div :class="['display-4 fw-bold', 'text-' + healthResult.color]">
-                                            {{ healthResult.score }}
+                                <div class="card-body py-2" v-if="!healthResult">
+                                    <p class="text-muted small my-3 text-center">启动监控后生成评估</p>
+                                </div>
+                                <div class="card-body py-2" v-else>
+                                    <!-- 评分环 -->
+                                    <div class="text-center mb-2">
+                                        <div class="position-relative mx-auto" style="width:80px; height:80px;">
+                                            <svg viewBox="0 0 36 36" class="w-100 h-100" style="transform: rotate(-90deg)">
+                                                <circle cx="18" cy="18" r="15.9155" fill="none"
+                                                        stroke="#e9ecef" stroke-width="3"/>
+                                                <circle cx="18" cy="18" r="15.9155" fill="none"
+                                                        stroke-width="3" stroke-linecap="round"
+                                                        :stroke="healthResult.color === 'success' ? '#198754' : healthResult.color === 'warning' ? '#fd7e14' : '#dc3545'"
+                                                        stroke-dasharray="100"
+                                                        :stroke-dashoffset="100 - healthResult.score"/>
+                                            </svg>
+                                            <div class="position-absolute top-50 start-50 translate-middle text-center"
+                                                 style="transform: rotate(0deg)">
+                                                <div :class="['fw-bold fs-5', 'text-' + healthResult.color]">{{ healthResult.score }}</div>
+                                            </div>
                                         </div>
-                                        <div :class="['badge fs-6', 'bg-' + healthResult.color]">
-                                            {{ healthResult.status }}
+                                        <div :class="['badge mt-1', 'bg-' + healthResult.color]">{{ healthResult.status }}</div>
+                                        <div class="small text-muted mt-1">{{ healthResult.summary }}</div>
+                                    </div>
+
+                                    <!-- 建议 -->
+                                    <div v-if="healthResult.suggestions && healthResult.suggestions.length" class="mb-2 small">
+                                        <div class="text-muted mb-1">建议：</div>
+                                        <div v-for="(s, i) in healthResult.suggestions" :key="i"
+                                             class="text-muted small"><i class="bi bi-dot"></i>{{ s }}</div>
+                                    </div>
+
+                                    <!-- 警报 -->
+                                    <div v-if="healthResult.alerts && healthResult.alerts.length" class="mb-2">
+                                        <div v-for="(a, i) in healthResult.alerts" :key="i"
+                                             :class="['alert py-2 px-2 mb-1 small border-start border-3',
+                                                      a.severity === 'high' ? 'alert-danger border-danger' : 'alert-warning border-warning']">
+                                            <div class="fw-bold">{{ a.message }}</div>
+                                            <div v-if="a.suggestion" class="text-muted mt-1">{{ a.suggestion }}</div>
                                         </div>
                                     </div>
-                                    <div v-if="healthResult.alerts && healthResult.alerts.length" class="small">
-                                        <div v-for="(a, i) in healthResult.alerts" :key="i"
-                                             :class="['alert py-1 px-2 mb-1', a.severity === 'high' ? 'alert-danger' : 'alert-warning']">
-                                            {{ a.message }}
+
+                                    <!-- 指标 -->
+                                    <div class="small mt-2" v-if="healthResult.details && healthResult.details.length">
+                                        <div class="text-muted mb-1">行为数据：</div>
+                                        <div v-for="(d, i) in healthResult.details" :key="i"
+                                             class="d-flex justify-content-between border-bottom py-1">
+                                            <span class="text-muted">{{ d.metric }}</span>
+                                            <span class="fw-bold">{{ d.value }}</span>
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
-                            <!-- 行为时间线图 -->
+                            <!-- 行为时间线 -->
                             <div class="card shadow-sm">
-                                <div class="card-header"><i class="bi bi-activity"></i> 行为时间线</div>
+                                <div class="card-header small fw-bold">
+                                    <i class="bi bi-activity me-1"></i>行为时间线
+                                </div>
                                 <div class="card-body p-1">
-                                    <div ref="behaviorChart" style="height:250px;"></div>
+                                    <div ref="behaviorChart" style="height:200px;"></div>
                                 </div>
                             </div>
                         </div>
@@ -275,7 +468,6 @@
         </div>
     </div>
 
-    <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/static/js/app.js"></script>
 </body>
